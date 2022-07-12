@@ -1,20 +1,43 @@
-import express from "express"
-import cors from "cors"
-import morgan from "morgan"
-// const express = require('express')
+const { PORT } = require("./config")
+const { NotFoundError } = require("./utils/errors")
+const authRoutes = require("./routes/auth")
+const express = require("express")
+const cors = require("cors")
+const morgan = require("morgan")
+const security = require("./middleware/security")
+// const storeRoute = require("./routes/store")
+// const orderRoute = require("./routes/order")
+
 const app = express()
-const port = 300
+
+// enable cross-origin resource sharing for all origins for all requests
+// NOTE: in production, we'll want to restrict this to only the origin
+// hosting our frontend.
 app.use(cors())
-
+// parse incoming requests with JSON payloads
+app.use(express.json())
+// log requests info
 app.use(morgan("tiny"))
+app.use(security.extractUserFromJwt)
 
-app.use(Express.json())
-
-app.get('/', (req, res) => {
-  res.send('Hello World!')
+app.use("/auth", authRoutes)
+// app.use("/store", storeRoute)
+// app.use("/orders", orderRoute)
+/** Handle 404 errors -- this matches everything */
+app.use((req, res, next) => {
+  return next(new NotFoundError())
 })
 
-app.use("/auth", authRouter)
-app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`)
+/** Generic error handler; anything unhandled goes here. */
+app.use((err, req, res, next) => {
+  const status = err.status || 500
+  const message = err.message
+
+  return res.status(status).json({
+    error: { message, status },
+  })
+})
+
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on http://localhost:${PORT}`)
 })
